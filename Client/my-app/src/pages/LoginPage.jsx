@@ -1,11 +1,13 @@
 import { useState } from 'react'
+import { login, signup } from '../services/authService'
 import './LoginPage.css'
 
-export default function LoginPage({ onAuthSuccess }) {
-    const [mode, setMode] = useState('login') // 'login' | 'signup'
+export default function LoginPage({ onLoginSuccess, initialMode = 'login' }) {
+    const [mode, setMode] = useState(initialMode)
     const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' })
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
+    const [signupDone, setSignupDone] = useState(false)
 
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value })
@@ -25,10 +27,13 @@ export default function LoginPage({ onAuthSuccess }) {
         try {
             if (mode === 'login') {
                 await login({ username: form.username, password: form.password })
+                onLoginSuccess?.()
             } else {
                 await signup({ username: form.username, email: form.email, password: form.password })
+                setSignupDone(true)
+                setMode('login')
+                setForm({ username: '', email: '', password: '', confirm: '' })
             }
-            onAuthSuccess?.()
         } catch (err) {
             setError(err.message || 'Something went wrong.')
         } finally {
@@ -40,6 +45,7 @@ export default function LoginPage({ onAuthSuccess }) {
         setMode(mode === 'login' ? 'signup' : 'login')
         setForm({ username: '', email: '', password: '', confirm: '' })
         setError('')
+        setSignupDone(false)
     }
 
     return (
@@ -67,64 +73,38 @@ export default function LoginPage({ onAuthSuccess }) {
                         </button>
                     </div>
 
+                    {signupDone && (
+                        <p className="signup-success">Account created! Please log in.</p>
+                    )}
+
                     <form className="login-form" onSubmit={handleSubmit} noValidate>
                         <div className="field">
                             <label htmlFor="username">Username</label>
-                            <input
-                                id="username"
-                                name="username"
-                                type="text"
-                                value={form.username}
-                                onChange={handleChange}
-                                required
-                                autoComplete="username"
-                                placeholder="your_username"
-                            />
+                            <input id="username" name="username" type="text" value={form.username}
+                                   onChange={handleChange} required autoComplete="username" placeholder="your_username" />
                         </div>
 
                         {mode === 'signup' && (
                             <div className="field">
                                 <label htmlFor="email">Email</label>
-                                <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    value={form.email}
-                                    onChange={handleChange}
-                                    required
-                                    autoComplete="email"
-                                    placeholder="you@example.com"
-                                />
+                                <input id="email" name="email" type="email" value={form.email}
+                                       onChange={handleChange} required autoComplete="email" placeholder="you@example.com" />
                             </div>
                         )}
 
                         <div className="field">
                             <label htmlFor="password">Password</label>
-                            <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                value={form.password}
-                                onChange={handleChange}
-                                required
-                                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                                placeholder="••••••••"
-                            />
+                            <input id="password" name="password" type="password" value={form.password}
+                                   onChange={handleChange} required
+                                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                                   placeholder="••••••••" />
                         </div>
 
                         {mode === 'signup' && (
                             <div className="field">
                                 <label htmlFor="confirm">Confirm Password</label>
-                                <input
-                                    id="confirm"
-                                    name="confirm"
-                                    type="password"
-                                    value={form.confirm}
-                                    onChange={handleChange}
-                                    required
-                                    autoComplete="new-password"
-                                    placeholder="••••••••"
-                                />
+                                <input id="confirm" name="confirm" type="password" value={form.confirm}
+                                       onChange={handleChange} required autoComplete="new-password" placeholder="••••••••" />
                             </div>
                         )}
 

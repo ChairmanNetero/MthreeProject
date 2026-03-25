@@ -1,15 +1,26 @@
 import { useState } from 'react'
 import LoginPage from './pages/LoginPage'
+import DashboardPage from './pages/DashboardPage.jsx'
 
 function App() {
-  const [authenticated, setAuthenticated] = useState(false)
+  // 'login' | 'dashboard'
+  const [page, setPage] = useState('login')
+  const [username, setUsername] = useState('')
 
-  if (!authenticated) {
-    return <LoginPage onAuthSuccess={() => setAuthenticated(true)} />
+  if (page === 'dashboard') {
+    return (
+        <DashboardPage
+            username={username}
+            onLogout={() => { setUsername(''); setPage('login') }}
+        />
+    )
   }
 
-  // TODO: replace with your main app content / router
-  return <div>You are logged in! (main app goes here)</div>
+  return (
+      <LoginPage
+          onLoginSuccess={(user = 'User') => { setUsername(user); setPage('dashboard') }}
+      />
+  )
 }
 
 export default App
