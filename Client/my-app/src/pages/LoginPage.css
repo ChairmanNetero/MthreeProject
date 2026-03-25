@@ -1,0 +1,171 @@
+/* ── Global reset & variables ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --bg:       #f7f7f7;
+    --surface:  #ffffff;
+    --border:   #d4d4d4;
+    --text:     #1a1a1a;
+    --muted:    #6b6b6b;
+    --accent:   #1a1a1a;
+    --accent-fg:#ffffff;
+    --radius:   6px;
+    --font:     'Georgia', serif;
+    --mono:     'Courier New', monospace;
+}
+
+/* ── Page layout ──────────────────────────────────────────── */
+.login-page {
+    min-height: 100vh;
+    background: var(--bg);
+    font-family: var(--font);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+.site-header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    background: var(--surface);
+    text-align: center;
+}
+
+.site-header h1 {
+    font-size: 1.35rem;
+    font-weight: normal;
+    letter-spacing: 0.01em;
+}
+
+/* ── Center card ──────────────────────────────────────────── */
+.login-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────── */
+.tab-row {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.75rem;
+}
+
+.tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 0.6rem 0;
+    font-family: var(--font);
+    font-size: 0.9rem;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-btn.active {
+    color: var(--text);
+    border-bottom-color: var(--text);
+}
+
+.tab-btn:hover:not(.active) {
+    color: var(--text);
+}
+
+/* ── Form ─────────────────────────────────────────────────── */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.field label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.field input {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 0.95rem;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.field input:focus {
+    border-color: var(--text);
+}
+
+/* ── Error ────────────────────────────────────────────────── */
+.form-error {
+    font-size: 0.85rem;
+    color: #b00;
+    font-family: var(--mono);
+}
+
+/* ── Submit button ────────────────────────────────────────── */
+.submit-btn {
+    margin-top: 0.4rem;
+    width: 100%;
+    padding: 0.7rem;
+    background: var(--accent);
+    color: var(--accent-fg);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.submit-btn:hover:not(:disabled) { opacity: 0.85; }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Switch mode ──────────────────────────────────────────── */
+.switch-text {
+    margin-top: 1.25rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    font-family: var(--font);
+    font-size: 0.85rem;
+    color: var(--text);
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+}
+
+.link-btn:hover { opacity: 0.7; }
