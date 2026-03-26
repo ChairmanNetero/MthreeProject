@@ -1,6 +1,6 @@
 aiohttp==3.8.1
 aiosignal==1.2.0
-alembic==1.7.6.dev0
+alembic==1.7.6
 apturl==0.5.2
 async-timeout==4.0.1
 attrs==21.2.0
