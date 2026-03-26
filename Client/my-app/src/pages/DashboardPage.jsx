@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { getTasks, createTask, updateTask, deleteTask } from '../services/taskService'
 import './DashboardPage.css'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -7,13 +8,10 @@ import './DashboardPage.css'
 function parseHours(raw) {
     if (!raw || !String(raw).trim()) return null
     const s = String(raw).trim().toLowerCase()
-    // e.g. 1h30 or 1h30m
     const hm = s.match(/^(\d+(?:\.\d+)?)h(\d+)m?$/)
     if (hm) return parseFloat(hm[1]) + parseInt(hm[2], 10) / 60
-    // e.g. 90m
     const m = s.match(/^(\d+(?:\.\d+)?)m$/)
     if (m) return parseFloat(m[1]) / 60
-    // plain decimal or integer
     const n = parseFloat(s)
     return isNaN(n) ? null : n
 }
@@ -31,9 +29,17 @@ function todayISO() {
     return new Date().toISOString().slice(0, 10)
 }
 
-const EMPTY_FORM = { title: '', date: todayISO(), hoursRaw: '', notes: '' }
+const CATEGORIES = [
+    '1-1 Tutoring',
+    'Academy & Wider Org Calls',
+    'Cohort Meetings',
+    'Holiday',
+    'PTO',
+    'Technical Interview',
+    'Technical Screening',
+]
 
-let nextId = 1
+const EMPTY_FORM = { title: '', date: todayISO(), hoursRaw: '', notes: '', category: CATEGORIES[0] }
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -42,24 +48,57 @@ export default function DashboardPage({ username = 'User', onLogout }) {
     const [form, setForm] = useState(EMPTY_FORM)
     const [editingId, setEditingId] = useState(null)
     const [formError, setFormError] = useState('')
-    const [filterMonth, setFilterMonth] = useState('') // 'YYYY-MM' or ''
+    const [filterMonth, setFilterMonth] = useState('')
     const [showForm, setShowForm] = useState(false)
+    const [loading, setLoading] = useState(false)
+    const [apiError, setApiError] = useState('')
+
+    // ── fetch tasks ────────────────────────────────────────────────────────
+
+    const loadTasks = useCallback(async () => {
+        setLoading(true)
+        setApiError('')
+        try {
+            const data = await getTasks(filterMonth)
+            // normalize backend field names to frontend names
+            setTasks(data.map(t => ({
+                id: t.id,
+                title: t.task_name,
+                date: t.task_date,
+                hours: t.hours != null ? parseFloat(t.hours) : null,
+                notes: t.description || '',
+                category: t.category || '',
+            })))
+        } catch (err) {
+            setApiError(err.message)
+        } finally {
+            setLoading(false)
+        }
+    }, [filterMonth])
+
+    useEffect(() => { loadTasks() }, [loadTasks])
 
     // ── derived ──────────────────────────────────────────────────────────────
 
-    const filtered = useMemo(() => {
-        if (!filterMonth) return tasks
-        return tasks.filter(t => t.date.startsWith(filterMonth))
-    }, [tasks, filterMonth])
-
     const totalHours = useMemo(
-        () => filtered.reduce((s, t) => s + (t.hours ?? 0), 0),
-        [filtered]
+        () => tasks.reduce((s, t) => s + (t.hours ?? 0), 0),
+        [tasks]
     )
 
     const months = useMemo(() => {
-        const set = new Set(tasks.map(t => t.date.slice(0, 7)))
+        const set = new Set(tasks.map(t => String(t.date).slice(0, 7)))
         return Array.from(set).sort().reverse()
+    }, [tasks])
+
+    const categoryStats = useMemo(() => {
+        const map = {}
+        for (const t of tasks) {
+            const cat = t.category || 'Uncategorized'
+            if (!map[cat]) map[cat] = { count: 0, hours: 0 }
+            map[cat].count += 1
+            map[cat].hours += t.hours ?? 0
+        }
+        return Object.entries(map).sort((a, b) => b[1].hours - a[1].hours)
     }, [tasks])
 
     // ── form helpers ─────────────────────────────────────────────────────────
@@ -82,6 +121,7 @@ export default function DashboardPage({ username = 'User', onLogout }) {
             date: task.date,
             hoursRaw: task.hours != null ? String(task.hours) : '',
             notes: task.notes || '',
+            category: task.category || CATEGORIES[0],
         })
         setEditingId(task.id)
         setFormError('')
@@ -94,7 +134,7 @@ export default function DashboardPage({ username = 'User', onLogout }) {
         setFormError('')
     }
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault()
         if (!form.title.trim()) { setFormError('Title is required.'); return }
         if (!form.date) { setFormError('Date is required.'); return }
@@ -104,30 +144,40 @@ export default function DashboardPage({ username = 'User', onLogout }) {
             setFormError('Invalid duration. Try "1h30", "1.5", or "90m".')
             return
         }
-
-        if (editingId !== null) {
-            setTasks(tasks.map(t =>
-                t.id === editingId
-                    ? { ...t, title: form.title.trim(), date: form.date, hours, notes: form.notes.trim() }
-                    : t
-            ))
-        } else {
-            setTasks([...tasks, {
-                id: nextId++,
-                title: form.title.trim(),
-                date: form.date,
-                hours,
-                notes: form.notes.trim(),
-                createdAt: new Date().toISOString(),
-            }])
+        if (hours === null || hours <= 0) {
+            setFormError('Duration is required and must be greater than 0.')
+            return
         }
-        setShowForm(false)
-        setEditingId(null)
+
+        const payload = {
+            title: form.title.trim(),
+            date: form.date,
+            hours,
+            notes: form.notes.trim(),
+            category: form.category.trim(),
+        }
+
+        try {
+            if (editingId !== null) {
+                await updateTask(editingId, payload)
+            } else {
+                await createTask(payload)
+            }
+            setShowForm(false)
+            setEditingId(null)
+            await loadTasks()
+        } catch (err) {
+            setFormError(err.message)
+        }
     }
 
-    const deleteTask = (id) => {
-        if (window.confirm('Delete this task?')) {
-            setTasks(tasks.filter(t => t.id !== id))
+    const handleDelete = async (id) => {
+        if (!window.confirm('Delete this task?')) return
+        try {
+            await deleteTask(id)
+            await loadTasks()
+        } catch (err) {
+            setApiError(err.message)
         }
     }
 
@@ -155,9 +205,9 @@ export default function DashboardPage({ username = 'User', onLogout }) {
                         <h2 className="page-title">My Tasks</h2>
                         {filterMonth && (
                             <span className="filter-badge">
-                {filterMonth}
+                                {filterMonth}
                                 <button className="badge-clear" onClick={() => setFilterMonth('')}>×</button>
-              </span>
+                            </span>
                         )}
                     </div>
                     <div className="topbar-right">
@@ -175,10 +225,12 @@ export default function DashboardPage({ username = 'User', onLogout }) {
                     </div>
                 </header>
 
+                {apiError && <p className="form-error" style={{ margin: '0 0 1rem' }}>{apiError}</p>}
+
                 {/* ── Stats strip ── */}
                 <div className="stats-strip">
                     <div className="stat-card">
-                        <span className="stat-value">{filtered.length}</span>
+                        <span className="stat-value">{tasks.length}</span>
                         <span className="stat-label">tasks {filterMonth ? 'this month' : 'total'}</span>
                     </div>
                     <div className="stat-card">
@@ -186,6 +238,28 @@ export default function DashboardPage({ username = 'User', onLogout }) {
                         <span className="stat-label">hours logged</span>
                     </div>
                 </div>
+
+                {/* ── Category summary ── */}
+                {categoryStats.length > 0 && (
+                    <table className="task-table" style={{ marginBottom: '1.5rem' }}>
+                        <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Tasks</th>
+                            <th>Total Hours</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {categoryStats.map(([cat, { count, hours }]) => (
+                            <tr key={cat}>
+                                <td className="cell-title">{cat}</td>
+                                <td className="cell-hours">{count}</td>
+                                <td className="cell-hours">{formatHours(hours)}</td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                )}
 
                 {/* ── Task form (inline panel) ── */}
                 {showForm && (
@@ -203,9 +277,15 @@ export default function DashboardPage({ username = 'User', onLogout }) {
                                     <input name="date" type="date" value={form.date} onChange={handleChange} />
                                 </div>
                                 <div className="field field--sm">
-                                    <label>Duration</label>
+                                    <label>Duration *</label>
                                     <input name="hoursRaw" value={form.hoursRaw} onChange={handleChange}
                                            placeholder="1h30 / 1.5 / 90m" />
+                                </div>
+                                <div className="field field--sm">
+                                    <label>Category</label>
+                                    <select name="category" value={form.category} onChange={handleChange}>
+                                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
                                 </div>
                             </div>
                             <div className="field">
@@ -225,7 +305,9 @@ export default function DashboardPage({ username = 'User', onLogout }) {
                 )}
 
                 {/* ── Task list ── */}
-                {filtered.length === 0 ? (
+                {loading ? (
+                    <div className="empty-state"><p>Loading…</p></div>
+                ) : tasks.length === 0 ? (
                     <div className="empty-state">
                         <p>{filterMonth ? 'No tasks for this month.' : 'No tasks yet — create one!'}</p>
                     </div>
@@ -236,23 +318,25 @@ export default function DashboardPage({ username = 'User', onLogout }) {
                             <th>Title</th>
                             <th>Date</th>
                             <th>Duration</th>
+                            <th>Category</th>
                             <th>Notes</th>
                             <th></th>
                         </tr>
                         </thead>
                         <tbody>
-                        {filtered
+                        {tasks
                             .slice()
-                            .sort((a, b) => b.date.localeCompare(a.date))
+                            .sort((a, b) => String(b.date).localeCompare(String(a.date)))
                             .map(task => (
                                 <tr key={task.id} className={editingId === task.id ? 'row--editing' : ''}>
                                     <td className="cell-title">{task.title}</td>
-                                    <td className="cell-date">{task.date}</td>
+                                    <td className="cell-date">{String(task.date).slice(0, 10)}</td>
                                     <td className="cell-hours">{formatHours(task.hours)}</td>
+                                    <td className="cell-notes">{task.category || '—'}</td>
                                     <td className="cell-notes">{task.notes || '—'}</td>
                                     <td className="cell-actions">
                                         <button className="icon-btn" title="Edit" onClick={() => openEdit(task)}>✎</button>
-                                        <button className="icon-btn icon-btn--danger" title="Delete" onClick={() => deleteTask(task.id)}>✕</button>
+                                        <button className="icon-btn icon-btn--danger" title="Delete" onClick={() => handleDelete(task.id)}>✕</button>
                                     </td>
                                 </tr>
                             ))}

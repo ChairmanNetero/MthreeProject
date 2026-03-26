@@ -1,49 +1,47 @@
 // src/services/authService.js
-// ─────────────────────────────────────────────────────────────
-// Auth API calls.  Replace BASE_URL and endpoint paths once
-// your backend is ready.
-// ─────────────────────────────────────────────────────────────
 
-const BASE_URL = 'http://localhost:3000' // TODO: set your real API base URL
+export function getToken() {
+    return localStorage.getItem('access_token')
+}
+
+export function logout() {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('user')
+}
 
 /**
  * Log in an existing user.
- * @param {{ username: string, password: string }} credentials
- * @returns {Promise<{ token: string, user: object }>}
+ * @param {{ email: string, password: string }} credentials
+ * @returns {Promise<{ access_token: string, user: object }>}
  */
-export async function login({ username, password }) {
-    // TODO: replace '/api/auth/login' with your real endpoint
-    const res = await fetch(`${BASE_URL}/api/auth/login`, {
+export async function login({ email, password }) {
+    const res = await fetch(`/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
     })
 
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.message || 'Login failed.')
-    }
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(body.error || 'Login failed.')
 
-    return res.json() // expected: { token, user }
+    localStorage.setItem('access_token', body.access_token)
+    localStorage.setItem('user', JSON.stringify(body.user))
+    return body
 }
 
 /**
  * Register a new user.
  * @param {{ username: string, email: string, password: string }} data
- * @returns {Promise<{ token: string, user: object }>}
+ * @returns {Promise<{ user: object }>}
  */
 export async function signup({ username, email, password }) {
-    // TODO: replace '/api/auth/signup' with your real endpoint
-    const res = await fetch(`${BASE_URL}/api/auth/signup`, {
+    const res = await fetch(`/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),
     })
 
-    if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.message || 'Sign-up failed.')
-    }
-
-    return res.json() // expected: { token, user }
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(body.error || 'Sign-up failed.')
+    return body
 }

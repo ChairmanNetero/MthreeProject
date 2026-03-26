@@ -5,6 +5,7 @@ import './LoginPage.css'
 export default function LoginPage({ onLoginSuccess, initialMode = 'login' }) {
     const [mode, setMode] = useState(initialMode)
     const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' })
+
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const [signupDone, setSignupDone] = useState(false)
@@ -26,8 +27,8 @@ export default function LoginPage({ onLoginSuccess, initialMode = 'login' }) {
         setLoading(true)
         try {
             if (mode === 'login') {
-                await login({ username: form.username, password: form.password })
-                onLoginSuccess?.()
+                const data = await login({ email: form.email, password: form.password })
+                onLoginSuccess?.(data.user.username, data.user.role)
             } else {
                 await signup({ username: form.username, email: form.email, password: form.password })
                 setSignupDone(true)
@@ -78,19 +79,19 @@ export default function LoginPage({ onLoginSuccess, initialMode = 'login' }) {
                     )}
 
                     <form className="login-form" onSubmit={handleSubmit} noValidate>
-                        <div className="field">
-                            <label htmlFor="username">Username</label>
-                            <input id="username" name="username" type="text" value={form.username}
-                                   onChange={handleChange} required autoComplete="username" placeholder="your_username" />
-                        </div>
-
                         {mode === 'signup' && (
                             <div className="field">
-                                <label htmlFor="email">Email</label>
-                                <input id="email" name="email" type="email" value={form.email}
-                                       onChange={handleChange} required autoComplete="email" placeholder="you@example.com" />
+                                <label htmlFor="username">Username</label>
+                                <input id="username" name="username" type="text" value={form.username}
+                                       onChange={handleChange} required autoComplete="username" placeholder="your_username" />
                             </div>
                         )}
+
+                        <div className="field">
+                            <label htmlFor="email">Email</label>
+                            <input id="email" name="email" type="email" value={form.email}
+                                   onChange={handleChange} required autoComplete="email" placeholder="you@example.com" />
+                        </div>
 
                         <div className="field">
                             <label htmlFor="password">Password</label>

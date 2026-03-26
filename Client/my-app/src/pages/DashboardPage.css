@@ -255,7 +255,8 @@
 }
 
 .field input,
-.field textarea {
+.field textarea,
+.field select {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 0.5rem 0.7rem;
@@ -268,7 +269,8 @@
     resize: vertical;
 }
 .field input:focus,
-.field textarea:focus { border-color: var(--text); }
+.field textarea:focus,
+.field select:focus { border-color: var(--text); }
 
 .form-error {
     font-family: var(--mono);

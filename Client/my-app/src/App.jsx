@@ -1,24 +1,37 @@
 import { useState } from 'react'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage.jsx'
+import AdminDashboard from './pages/AdminDashboard.jsx'
+import { logout } from './services/authService'
 
 function App() {
-  // 'login' | 'dashboard'
-  const [page, setPage] = useState('login')
-  const [username, setUsername] = useState('')
+  const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
+
+  const [page, setPage] = useState(storedUser ? 'dashboard' : 'login')
+  const [username, setUsername] = useState(storedUser?.username || '')
+  const [role, setRole] = useState(storedUser?.role || '')
+
+  const handleLogout = () => {
+    logout()
+    setUsername('')
+    setRole('')
+    setPage('login')
+  }
 
   if (page === 'dashboard') {
-    return (
-        <DashboardPage
-            username={username}
-            onLogout={() => { setUsername(''); setPage('login') }}
-        />
-    )
+    if (role === 'admin') {
+      return <AdminDashboard username={username} onLogout={handleLogout} />
+    }
+    return <DashboardPage username={username} onLogout={handleLogout} />
   }
 
   return (
       <LoginPage
-          onLoginSuccess={(user = 'User') => { setUsername(user); setPage('dashboard') }}
+          onLoginSuccess={(name, userRole) => {
+            setUsername(name)
+            setRole(userRole)
+            setPage('dashboard')
+          }}
       />
   )
 }
